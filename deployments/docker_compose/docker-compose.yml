@@ -1,0 +1,96 @@
+services:
+  # --- Main Application Service ---
+  aac-openclaw:
+    image: "ghcr.io/openclaw/openclaw:2026.6.1"
+    container_name: "aac-openclaw"
+    hostname: "openclaw"
+    restart: "always"
+
+    command:
+      - "node"
+      - "dist/index.js"
+      - "gateway"
+      - "--bind"
+      - "lan"
+      - "--port"
+      - "18789"
+
+    environment:
+      TZ: "Europe/Berlin"
+      HOME: "/home/node"
+      OPENCLAW_CONFIG_PATH: "${OPENCLAW_CONFIG_PATH:?set OPENCLAW_CONFIG_PATH in .env (see .env.example)}"
+      OPENCLAW_PUBLIC_URL: "https://openclaw.example.com"
+      OPENCLAW_DISABLE_BONJOUR: "1"
+      TERM: "xterm-256color"
+      BROWSER: "echo"
+      OPENCLAW_ALLOW_INSECURE_PRIVATE_WS: "false"
+      OPENCLAW_AGENT_MODEL: "${OPENCLAW_AGENT_MODEL:?set OPENCLAW_AGENT_MODEL in .env (see .env.example)}"
+      VIKUNJA_URL: "https://openclaw.example.com"
+      VIKUNJA_TOKEN: "${VIKUNJA_TOKEN:?set VIKUNJA_TOKEN in .env (see .env.example)}"
+      OPENCLAW_GATEWAY_TOKEN: "${OPENCLAW_GATEWAY_TOKEN:?set OPENCLAW_GATEWAY_TOKEN in .env (see .env.example)}"
+      GEMINI_API_KEY: "${GEMINI_API_KEY:?set GEMINI_API_KEY in .env (see .env.example)}"
+      GITHUB_TOKEN: "${GITHUB_TOKEN:?set GITHUB_TOKEN in .env (see .env.example)}"
+      COPILOT_GITHUB_TOKEN: "${COPILOT_GITHUB_TOKEN:?set COPILOT_GITHUB_TOKEN in .env (see .env.example)}"
+      DISCORD_BOT_TOKEN: "${DISCORD_BOT_TOKEN:?set DISCORD_BOT_TOKEN in .env (see .env.example)}"
+      GITLAB_TOKEN: "${GITLAB_TOKEN:?set GITLAB_TOKEN in .env (see .env.example)}"
+    ports:
+      - "18789:18789/tcp"
+      - "18790:18790/tcp"
+
+    volumes:
+      - "/export/docker/aac-openclaw/config:/home/node/.openclaw"
+      - "/export/docker/aac-openclaw/workspace:/home/node/.openclaw/workspace"
+
+    networks:
+      - exposed
+      - interconnect
+      - secured
+      - stack_internal
+
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.aac-openclaw.rule: "Host(`openclaw.example.com`)"
+      traefik.http.routers.aac-openclaw.entrypoints: "websecure"
+      traefik.http.routers.aac-openclaw.tls: "true"
+      traefik.http.routers.aac-openclaw.tls.certresolver: "ionos"
+      traefik.http.middlewares.aac-openclaw-headers.headers.customrequestheaders.X-Forwarded-Proto: "https"
+      traefik.http.middlewares.aac-openclaw-headers.headers.customrequestheaders.X-Forwarded-Port: "443"
+      traefik.http.routers.aac-openclaw.middlewares: "aac-openclaw-headers@docker"
+      traefik.docker.network: "services-secured"
+      traefik.http.services.aac-openclaw.loadbalancer.server.port: "18789"
+      traefik.http.services.aac-openclaw.loadbalancer.server.scheme: "http"
+      auto-dns.createWildcard.aac-openclaw: "false"
+      auto-dns.customDNS.aac-openclaw: "true"
+      auto-dns.customDOMAIN.aac-openclaw: "example.com"
+      auto-dns.customHost.aac-openclaw: "openclaw"
+      homepage.group: "Kommunikation"
+      homepage.name: "OpenClaw"
+      homepage.href: "https://openclaw.example.com"
+      homepage.icon: "openclaw.png"
+      homepage.description: "OpenClaw API Gateway & CLI"
+
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch(\u0027http://127.0.0.1:18789/healthz\u0027).then((r)=\u003eprocess.exit(r.ok?0:1)).catch(()=\u003eprocess.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+    user: 0:0
+
+
+
+networks:
+  secured:
+    name: "services-secured"
+    external: true
+  exposed:
+    name: "services-exposed"
+    external: true
+  interconnect:
+    name: "docker-default"
+    external: true
+  stack_internal:
+    name: "aac-openclaw_stack_internal"
+    driver: "bridge"
+

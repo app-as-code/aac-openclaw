@@ -1,0 +1,125 @@
+service:
+  name: aac-openclaw
+  friendly_name: OpenClaw
+  image_repo: ghcr.io/openclaw/openclaw
+  image_tag: 2026.6.1
+  description: OpenClaw API Gateway & CLI
+  icon: openclaw.png
+  category: Kommunikation
+  stage: prod
+  hostname: openclaw
+ports:
+- name: gateway
+  port: 18789
+  external_port: 18789
+  protocol: TCP
+- name: bridge
+  port: 18790
+  external_port: 18790
+  protocol: TCP
+config:
+  domain_name: example.com
+  generate_hostname: false
+  integrations:
+    homepage:
+      enabled: true
+    autodns:
+      enabled: true
+    traefik:
+      enabled: true
+      cert_resolver: ionos
+      entrypoint: websecure
+      service_port: 18789
+      custom_request_headers:
+        X-Forwarded-Proto: https
+        X-Forwarded-Port: '443'
+  schema_version: 2
+secrets:
+  VIKUNJA_TOKEN: CHANGE_ME
+  OPENCLAW_GATEWAY_TOKEN: CHANGE_ME
+  GEMINI_API_KEY: CHANGE_ME
+  GITHUB_TOKEN: CHANGE_ME
+  COPILOT_GITHUB_TOKEN: CHANGE_ME
+  DISCORD_BOT_TOKEN: CHANGE_ME
+  GITLAB_TOKEN: CHANGE_ME
+volumes:
+  config:
+    description: Persistent config for OpenClaw
+  workspace:
+    description: Persistent workspace for OpenClaw
+deployment_strategy:
+  main:
+    enabled: true
+    target_stage: prod
+  dev:
+    enabled: true
+    target_stage: dev
+  test:
+    enabled: false
+    target_stage: test
+  ansible-dev:
+    enabled: true
+    target_stage: dev
+  iac-dev:
+    enabled: true
+    target_stage: dev
+  template-dev:
+    enabled: true
+    target_stage: dev
+deployments:
+  docker_compose:
+    restart_policy: always
+    host_base_path: /export/docker
+    user: 0:0
+    command:
+    - node
+    - dist/index.js
+    - gateway
+    - --bind
+    - lan
+    - --port
+    - '18789'
+    healthcheck:
+      test:
+      - CMD
+      - node
+      - -e
+      - fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    volumes:
+    - config:/home/node/.openclaw
+    - workspace:/home/node/.openclaw/workspace
+    environment:
+      TZ: '{{ vars.TZ }}'
+      HOME: '{{ vars.HOME }}'
+      OPENCLAW_CONFIG_PATH: '{{ vars.OPENCLAW_CONFIG_PATH }}'
+      OPENCLAW_PUBLIC_URL: '{{ vars.OPENCLAW_PUBLIC_URL }}'
+      OPENCLAW_DISABLE_BONJOUR: '{{ vars.OPENCLAW_DISABLE_BONJOUR }}'
+      TERM: '{{ vars.TERM }}'
+      BROWSER: '{{ vars.BROWSER }}'
+      OPENCLAW_ALLOW_INSECURE_PRIVATE_WS: '{{ vars.OPENCLAW_ALLOW_INSECURE_PRIVATE_WS
+        }}'
+      OPENCLAW_AGENT_MODEL: '{{ vars.OPENCLAW_AGENT_MODEL }}'
+      VIKUNJA_URL: '{{ vars.VIKUNJA_URL }}'
+      VIKUNJA_TOKEN: '{{ secrets.VIKUNJA_TOKEN }}'
+      OPENCLAW_GATEWAY_TOKEN: '{{ secrets.OPENCLAW_GATEWAY_TOKEN }}'
+      GEMINI_API_KEY: '{{ secrets.GEMINI_API_KEY }}'
+      GITHUB_TOKEN: '{{ secrets.GITHUB_TOKEN }}'
+      COPILOT_GITHUB_TOKEN: '{{ secrets.COPILOT_GITHUB_TOKEN }}'
+      DISCORD_BOT_TOKEN: '{{ secrets.DISCORD_BOT_TOKEN }}'
+      GITLAB_TOKEN: '{{ secrets.GITLAB_TOKEN }}'
+vars:
+  TZ: Europe/Berlin
+  HOME: /home/node
+  OPENCLAW_CONFIG_PATH: CHANGE_ME
+  OPENCLAW_PUBLIC_URL: https://openclaw.example.com
+  OPENCLAW_TRUSTED_PROXIES: 192.0.2.7,192.0.2.0/24,198.51.100.0/24
+  OPENCLAW_DISABLE_BONJOUR: '1'
+  TERM: xterm-256color
+  BROWSER: echo
+  OPENCLAW_ALLOW_INSECURE_PRIVATE_WS: 'false'
+  OPENCLAW_AGENT_MODEL: CHANGE_ME
+  VIKUNJA_URL: https://openclaw.example.com

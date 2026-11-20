@@ -1,0 +1,46 @@
+{
+  "agents": {
+    "defaults": {
+      "model": {
+        "primary": "{{ vars.OPENCLAW_AGENT_MODEL }}"
+      },
+      "compaction": {
+        "mode": "safeguard"
+      }
+    }
+  },
+  "gateway": {
+    "mode": "local",
+    "controlUi": {
+      "dangerouslyDisableDeviceAuth": false,
+      "allowedOrigins": [
+        "https://{{ service.stage }}.{{ service.name }}.{{ inventory_hostname }}.{{ config.domain_name }}"
+      ]
+    },
+    "trustedProxies": [
+{% for p in vars.OPENCLAW_TRUSTED_PROXIES.split(",") %}
+      "{{ p }}"{{ "," if not loop.last }}
+{% endfor %}
+    ],
+    "auth": {
+      "mode": "token",
+      "token": "${OPENCLAW_GATEWAY_TOKEN}"
+    },
+    "remote": {
+      "url": "ws://{{ service.name | lower }}:{{ ports[0].port }}",
+      "token": "${OPENCLAW_GATEWAY_TOKEN}"
+    }
+  },
+  "plugins": {
+    "entries": {
+      "github-copilot": {
+        "enabled": true
+      },
+      "device-pair": {
+        "config": {
+          "publicUrl": "https://{{ service.stage }}.{{ service.name }}.{{ inventory_hostname }}.{{ config.domain_name }}"
+        }
+      }
+    }
+  }
+}
